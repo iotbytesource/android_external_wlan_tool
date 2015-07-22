@@ -1,0 +1,71 @@
+#!/system/bin/sh
+#------------------------------------------------------------------------------
+# <copyright file="makefile" company="SEMCO">
+#    Copyright (c) 2005-2012 SEMCO Corporation.  All rights reserved.
+#------------------------------------------------------------------------------
+#==============================================================================
+# Author(s): ="SEMCO"
+#==============================================================================
+
+IFNAME=`getprop wifi.interface wlan0`
+TAGS="wifi_loader"
+DRIVER_PROP_NAME="wlan.driver.status"
+SYSLOG="log -p i -t $TAGS "
+
+strcmp() {
+    case $1 in
+        $2)
+        return 0;
+        ;;
+        *)
+        return 1;
+        ;;
+    esac
+}
+
+do_setprop() {
+    setprop $1 $2
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+        if strcmp `getprop $1` $2; then
+            break
+        fi
+        setprop $1 $2
+    done
+}
+
+do_insmod() {
+    case $1 in
+    	cfg80211)
+    		if ! insmod /system/etc/cfg80211.ko; then
+	    		$SYSLOG "load cfg80211"
+    		fi
+    	;;    
+    	ath6kl_sdio) 
+    		if ! insmod /system/etc/ath6kl_sdio.ko; then
+        	$SYSLOG "load ath6kl_sdio"
+        	do_setprop $DRIVER_PROP_NAME ok
+    		fi
+    	;;
+    	*)
+    		$SYSLOG "load ath6kl_sdio fail"
+    	;;
+    esac  
+}
+
+reload() {
+    $SYSLOG "Try to load driver"
+    do_insmod cfg80211
+    sleep 1
+    do_insmod ath6kl_sdio
+}
+
+init() {
+    setprop wifi.interface wlan0
+    reload
+}
+
+case $1 in 
+    *) 
+    init
+    ;;
+esac
